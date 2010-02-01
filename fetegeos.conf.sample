@@ -5,3 +5,7 @@
 # "127.0.0.1", "127.0.0.2", ..., "127.0.0.255".
 
 accept_connect = ["127.0.0.1"]
+
+db_database = "fetegeo"
+db_user = "postgres"
+db_password = ""

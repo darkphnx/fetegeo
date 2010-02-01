@@ -62,7 +62,9 @@ class Fetegeos_Handler(SocketServer.BaseRequestHandler):
         else:
             # Connections can't be shared between threads safely, so for every thread we have to
             # make a new connection.
-            self._db = dbmod.connect(user="root", database="fetegeo")
+            self._db = dbmod.connect(user=server._config.db_user,
+                database=server._config.db_database, 
+                password=server._config.db_password)
             try:
                 self.db.set_client_encoding('utf-8')
             except:
@@ -241,7 +243,9 @@ class Fetegeos_Server(SocketServer.TCPServer, SocketServer.ThreadingMixIn):
         
         if dbmod.threadsafety == 2 or dbmod.threadsafety == 3:
             # Connections can be shared between threads safely so we connect only once.
-            self.db = dbmod.connect(user="root", database="fetegeo")
+            self.db = dbmod.connect(user=self._config.db_user,
+                database=self._config.db_database, 
+                password=self._config.db_password)
             try:
                 self.db.set_client_encoding('utf-8')
             except:
