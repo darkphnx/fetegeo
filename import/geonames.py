@@ -90,7 +90,7 @@ def _hash_list(s):
 
 print "===> Connecting to database"
 
-db = dbmod.connect(user="root", database="fetegeo")
+db = dbmod.connect(user="postgres", database="fetegeo-test", password="pi3142")
 if hasattr(db, "set_client_encoding"):
     db.set_client_encoding("utf-8")
 
@@ -98,10 +98,10 @@ if hasattr(db, "set_client_encoding"):
 
 print "===> Creating tables"
 
-f = file("tables", "rt")
+#f = file("tables", "rt")
 c = db.cursor()
-c.execute(f.read())
-f.close()
+#c.execute(f.read())
+#f.close()
 
 
 
@@ -314,8 +314,10 @@ for iso2 in countries_map.keys():
     f = codecs.open(cn_path, "rt", "utf-8")
     place_buf = []
     name_buf = []
-    tmp_place_hndl, tmp_place_path = tempfile.mkstemp()
-    tmp_place_name_hndl, tmp_place_name_path = tempfile.mkstemp()
+    tmp_place_hndl, tmp_place_path = tempfile.mkstemp(dir="/tmp")
+    os.chmod(tmp_place_path, 0666)
+    tmp_place_name_hndl, tmp_place_name_path = tempfile.mkstemp(dir="/tmp")
+    os.chmod(tmp_place_name_path, 0666)
     for l in f:
         r = [x.strip() for x in l.split("\t")]
         
@@ -343,9 +345,14 @@ for iso2 in countries_map.keys():
             admin1_code = "%s.%s" % (r[COUNTRY_CODE], r[ADMIN1_CODE])
             if admin1_map.has_key(admin1_code):
                 parent_id = str(admin1_map[admin1_code])
+                
+        # Convert lat/long into GIS WKB format - may need to look at native 
+        # implementation if this is too slow.
+        c.execute("SELECT ST_GeomFromText(\'POINT(%s %s)\', 4326)" % (r[LATITUDE], r[LONGITUDE]))
+        location = c.fetchone()[0]
 
         place_tsv = u"\t".join([str(place_id), geonames_id, str(country_id), parent_id, \
-          r[LATITUDE], r[LONGITUDE], str(TYPE_PLACE), r[POPULATION]])
+          location, str(TYPE_PLACE), r[POPULATION]])
         os.write(tmp_place_hndl, place_tsv.encode("utf-8") + "\n")
 
         lang_id = "\\N"
@@ -368,7 +375,7 @@ for iso2 in countries_map.keys():
     os.close(tmp_place_name_hndl)
     sys.stdout.write("importing places... ")
     sys.stdout.flush()
-    c.execute("""COPY place (id, geonames_id, country_id, parent_id, lat, long, type, population)
+    c.execute("""COPY place (id, geonames_id, country_id, parent_id, location, type, population)
       FROM %(path)s""", dict(path=tmp_place_path))
     sys.stdout.write("importing place names...")
     sys.stdout.flush()
