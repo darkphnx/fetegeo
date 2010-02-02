@@ -37,8 +37,7 @@ CREATE TABLE place (
   geonames_id bigint,
   country_id bigint, -- could be null? not yet
   parent_id bigint, -- can be null
-  lat double precision,
-  long double precision,
+  location geometry, -- PostGIS geom
   type int,
   population bigint
 ) ;
@@ -63,8 +62,7 @@ CREATE TABLE postcode (
   country_id bigint,
   main text, -- Main part of the postcode e.g. NW1V
   sup text,  -- Supplementary part of the postcode e.g. 4DB
-  lat double precision,
-  long double precision,
+  location geometry, -- PostGIS geom
   area_pp text -- Pretty-printed version of the area e.g. "San Francisco CA"
 ) ;
 

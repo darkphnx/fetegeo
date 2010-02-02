@@ -42,7 +42,7 @@ def get_country_id(iso2):
 
 
 
-db = dbmod.connect(user="root", database="fetegeo")
+db = dbmod.connect(user="postgres", password="pi3142", database="fetegeo")
 c = db.cursor()
 
 
@@ -60,13 +60,13 @@ for l in codecs.EncodedFile(f, "utf-8"):
     sup=sp[1]
     if sup == "":
         sup = None
-    c.execute("""INSERT INTO postcode (country_id, main, sup, lat, long) VALUES
-      (%(uk_id)s, %(main)s, %(sup)s, %(lat)s, %(long)s)""",
-      dict(uk_id=uk_id, main=main, sup=sup, lat=sp[4], long=sp[5]))
+    location = """ST_GeomFromText(\'POINT(%(lat)s  %(long)s)\', 4326)""" % dict(lat=sp[4], long=sp[5])
+    c.execute("""INSERT INTO postcode (country_id, main, sup, location) VALUES
+      (%(uk_id)s, %(main)s, %(sup)s, ST_GeomFromText(%(loc)s, 4326))""",
+      dict(uk_id=uk_id, main=main, sup=sup, loc='POINT(%(lat)s  %(long)s)' % {'lat':sp[4], 'long':sp[5]}))
 
 f.close()
 db.commit()
-
 
 # German post codes
 
@@ -82,9 +82,9 @@ for l in f:
     lat = float(sp[3])
     long = float(sp[2])
     area_pp = sp[4].decode("latin-1").encode("utf-8")
-    c.execute("""INSERT INTO postcode (country_id, main, lat, long, area_pp) VALUES
-      (%(de_id)s, %(main)s, %(lat)s, %(long)s, %(area_pp)s)""",
-      dict(de_id=de_id, main=main, lat=lat, long=long, area_pp=area_pp))
+    c.execute("""INSERT INTO postcode (country_id, main, location, area_pp) VALUES
+      (%(de_id)s, %(main)s, ST_GeomFromText(%(loc)s, 4326), %(area_pp)s)""",
+      dict(de_id=de_id, main=main, loc='POINT(%(lat)s  %(long)s)' % {'lat':lat, 'long':long}, area_pp=area_pp))
 
 f.close()
 db.commit()
@@ -110,9 +110,9 @@ for l in f:
     lat = float(sp[3])
     long = float(sp[4])
     area_pp = "%s %s" % (sp[1], sp[2])
-    c.execute("""INSERT INTO postcode (country_id, main, lat, long, area_pp) VALUES
-      (%(us_id)s, %(main)s, %(lat)s, %(long)s, %(area_pp)s)""",
-      dict(us_id=us_id, main=main, lat=lat, long=long, area_pp=area_pp))
+    c.execute("""INSERT INTO postcode (country_id, main, location, area_pp) VALUES
+      (%(us_id)s, %(main)s, ST_GeomFromText(%(loc)s, 4326), %(area_pp)s)""",
+      dict(us_id=us_id, main=main, loc='POINT(%(lat)s  %(long)s)' % {'lat':lat, 'long':long}, area_pp=area_pp))
 
 f.close()
 os.remove(us_zip_path)
