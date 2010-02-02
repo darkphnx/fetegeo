@@ -402,7 +402,9 @@ class Free_Text:
         else:
             country_sstr = ""
         
-        c.execute("SELECT * FROM postcode WHERE lower(main)=%(main)s AND sup IS NULL" + country_sstr,
+        c.execute("SELECT id, country_id, main, sup, area_pp, ST_X(location) AS lat, \
+          ST_Y(location) AS long FROM postcode \
+          WHERE lower(main)=%(main)s AND sup IS NULL" + country_sstr, \
           dict(main=self.split[i], country_id=country_id))
         
         cols_map = self.queryier.mk_cols_map(c)

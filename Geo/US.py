@@ -47,7 +47,8 @@ def _sub_pc_match(ft, i):
 
     c = ft.db.cursor()
 
-    c.execute("SELECT * FROM postcode WHERE lower(main)=%(main)s AND country_id=%(us_id)s",
+    c.execute("SELECT id, country_id, main, sup, area_pp, ST_X(location) AS lat, \
+      ST_Y(location) AS long FROM postcode WHERE lower(main)=%(main)s AND country_id=%(us_id)s",
       dict(main=ft.split[i], us_id=us_id))
 
     cols_map = ft.queryier.mk_cols_map(c)

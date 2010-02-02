@@ -85,7 +85,8 @@ def postcode_match(ft, i):
     # a match, we don't try searching any further.
 
     c = ft.db.cursor()
-    c.execute("""SELECT * FROM postcode
+    c.execute("""SELECT id, country_id, main, sup, area_pp, ST_X(location) AS lat,
+      ST_Y(location) AS long FROM postcode
       WHERE country_id=%(uk_id)s AND lower(main)=%(main)s AND lower(sup)=%(sup)s""",
       dict(uk_id=uk_id, main=ft.split[i - 1], sup=ft.split[i]))
     
@@ -104,7 +105,8 @@ def postcode_match(ft, i):
     # part. e.g. for AA9A 9AA try matching AA9A 9.
 
     c = ft.db.cursor()
-    c.execute("""SELECT * FROM postcode
+    c.execute("""SELECT id, country_id, main, sup, area_pp, ST_X(location) AS lat, 
+      ST_Y(location) AS long FROM postcode
       WHERE country_id=%(uk_id)s AND lower(main)=%(main)s AND lower(sup)=%(sup0)s""",
       dict(uk_id=uk_id, main=ft.split[i - 1], sup0=ft.split[i][0]))
     
@@ -123,7 +125,8 @@ def postcode_match(ft, i):
     # part. This will probably return multiple matches.
 
     c = ft.db.cursor()
-    c.execute("SELECT * FROM postcode WHERE country_id=%(uk_id)s AND lower(main)=%(main)s",
+    c.execute("SELECT id, country_id, main, sup, area_pp, ST_X(location) AS lat, \
+      ST_Y(location) AS long FROM postcode WHERE country_id=%(uk_id)s AND lower(main)=%(main)s",
       dict(uk_id=uk_id, main=ft.split[i - 1]))
     
     if c.rowcount != 0:
