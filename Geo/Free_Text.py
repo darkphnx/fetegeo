@@ -263,7 +263,8 @@ class Free_Text:
                 places = self.queryier.place_cache[cache_key]
             else:
                 c.execute("""SELECT DISTINCT ON (place.id, name)
-                  place.id, name, lat, long, country_id, parent_id, population
+                  place.id, name, ST_X(location) AS lat, ST_Y(location) AS long, 
+                  country_id, parent_id, population
                   FROM place, place_name
                   WHERE name_hash=%(name_hash)s AND place.id=place_name.place_id""" + country_sstr,
                   dict(name_hash=sub_hash, country_id=country_id))
