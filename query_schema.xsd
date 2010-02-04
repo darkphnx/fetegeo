@@ -1,0 +1,145 @@
+<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+<!-- Response Elements -->
+
+<xs:element name="results">
+    <xs:complexType>
+        <xs:sequence>
+            <xs:element name="result" minOccurs="1" maxOccurs="unbounded">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element name="place" minOccurs="0" maxOccurs="1">
+                            <xs:complexType>
+                                <xs:sequence>
+                                    <xs:element name="id" type="xs:integer"/>
+                                    <xs:element name="name" type="xs:string"/>
+                                    <xs:element name="country_id" type="xs:integer"/>
+                                    <xs:element name="parent_id" type="xs:integer"/>
+                                    <xs:element name="population" type="xs:integer"/>
+                                    <xs:element name="pp" type="xs:string"/>
+                                    <xs:element name="location">
+                                        <xs:complexType>
+                                            <xs:choice>
+                                                <xs:element name="point" type="geopoint"/>
+                                                <xs:element name="line" type="geoline"/>
+                                                <xs:element name="area" type="geopoly"/>
+                                            </xs:choice>
+                                        </xs:complexType>
+                                    </xs:element>
+                                </xs:sequence>
+                            </xs:complexType>
+                        </xs:element>
+                        <xs:element name="postcode" minOccurs="0" maxOccurs="1">
+                            <xs:complexType>
+                                <xs:sequence>
+                                    <xs:element name="id" type="xs:integer"/>
+                                    <xs:element name="country_id" type="xs:integer"/>
+                                    <xs:element name="pp" type="xs:string"/>
+                                    <xs:element name="location" type="geopoint"/>
+                                </xs:sequence>
+                            </xs:complexType>
+                        </xs:element>
+                        <xs:element name="dangling" type="xs:string"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+        </xs:sequence>
+    </xs:complexType>
+</xs:element>
+
+<xs:element name="result">
+    <xs:complexType>
+        <xs:sequence>
+            <xs:element name="country">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element name="name" type="xs:string"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+        </xs:sequence>
+    </xs:complexType>
+</xs:element>
+
+<!-- Request elements -->
+
+<xs:element name="geoquery">
+    <xs:complexType>
+        <xs:sequence>
+            <xs:element name="lang" type="xs:string"/>
+            <xs:element name="qs" type="xs:string"/>
+        </xs:sequence>
+        <xs:attribute name="version" type="xs:integer"/>
+        <xs:attribute name="find_all" type="boolean"/>
+        <xs:attribute name="allow_dangling" type="boolean"/>
+    </xs:complexType>
+</xs:element>
+
+<xs:element name="countryquery">
+    <xs:complexType>
+        <xs:sequence>
+            <xs:element name="lang" type="xs:string"/>
+            <xs:element name="qs" type="xs:string"/>
+        </xs:sequence>
+        <xs:attribute name="version" type="xs:integer"/>
+    </xs:complexType>
+</xs:element>
+
+<!-- Supporting types -->
+
+<xs:simpleType name="boolean">
+    <xs:restriction base="xs:string">
+        <xs:enumeration value="true"/>
+        <xs:enumeration value="false"/>
+    </xs:restriction>
+</xs:simpleType>
+
+<xs:complexType name="geopoint">
+    <!-- Geopoint data in WGS84 format -->
+    <xs:sequence>
+        <xs:element name="lat" minOccurs="1" maxOccurs="1">
+            <xs:simpleType>
+                <xs:restriction base="xs:decimal">
+                    <xs:minInclusive value="-90.0"/>
+                    <xs:maxInclusive value="90.0"/>
+                </xs:restriction>
+            </xs:simpleType>
+        </xs:element>
+        <xs:element name="long" minOccurs="1" maxOccurs="1">
+            <xs:simpleType>
+                <xs:restriction base="xs:decimal">
+                    <xs:minInclusive value="-90.0"/>
+                    <xs:maxInclusive value="90.0"/>
+                </xs:restriction>
+            </xs:simpleType>
+        </xs:element>
+    </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="geomultipoint">
+    <!-- For types that require more than 1 point, we need a sequence identifier -->
+    <xs:complexContent>
+        <xs:extension base="geopoint">
+            <xs:sequence>
+                <xs:element name="seq" type="xs:integer" minOccurs="1" maxOccurs="1"/>
+            </xs:sequence>
+        </xs:extension>
+    </xs:complexContent>
+</xs:complexType>
+
+<xs:complexType name="geoline">
+    <!-- Sequence of geopoints that make a line -->
+    <xs:sequence>
+        <xs:element name="point" type="geomultipoint" minOccurs="2" maxOccurs="unbounded"/>
+    </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="geopoly">
+    <!-- Sequence of geopoints that make an area -->
+    <xs:sequence>
+        <xs:element name="point" type="geomultipoint" minOccurs="3" maxOccurs="unbounded"/>
+    </xs:sequence>
+</xs:complexType>
+
+</xs:schema>
