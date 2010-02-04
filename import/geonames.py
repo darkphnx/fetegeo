@@ -315,9 +315,9 @@ for iso2 in countries_map.keys():
     place_buf = []
     name_buf = []
     tmp_place_hndl, tmp_place_path = tempfile.mkstemp(dir="/tmp")
-    os.chmod(tmp_place_path, 0666)
+    os.chmod(tmp_place_path, 0644)
     tmp_place_name_hndl, tmp_place_name_path = tempfile.mkstemp(dir="/tmp")
-    os.chmod(tmp_place_name_path, 0666)
+    os.chmod(tmp_place_name_path, 0644)
     for l in f:
         r = [x.strip() for x in l.split("\t")]
         
