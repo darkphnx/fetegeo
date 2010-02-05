@@ -18,6 +18,11 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
+# Use lxml if it is available since it is faster
+try:
+    from lxml import etree
+except ImportError:
+    import xml.etree.cElementTree as etree
 
 class Result:
 
@@ -26,15 +31,12 @@ class Result:
         self.ri = ri
         self.dangling = dangling
 
-
-
     def to_xml(self):
-    
-        return u"""<result>
-%s
-<dangling>%s</dangling>
-</result>""" % (self.ri.to_xml(), self.dangling)
-
+        result = etree.Element('result')
+        result.append(self.ri.to_xml())
+        etree.SubElement(result, 'dangling').text = self.dangling
+        
+        return etree.tostring(result, pretty_print=True)
 
 
 class RCountry:
@@ -45,17 +47,13 @@ class RCountry:
         self.name = name
         self.pp = pp
 
-
-
     def to_xml(self):
-    
-        return u"""<country>
-<id>%s</id>
-<name>%s</name>
-<pp>%s</pp>
-</country>""" % (self.id, self.name, self.pp)
-    
-
+        country = etree.Element('country')
+        etree.SubElement(country, 'id').text = str(self.id)
+        etree.SubElement(country, 'name').text = self.name
+        etree.SubElement(country, 'pp').text = self.pp
+        
+        return country
 
 
 class RPlace:
@@ -71,40 +69,22 @@ class RPlace:
         self.population = population
         self.pp = pp
 
-
-
     def to_xml(self):
+        place = etree.Element("place")
+        etree.SubElement(place, 'id').text = str(self.id)
+        etree.SubElement(place, 'name').text = self.name
+        etree.SubElement(place, 'lat').text = str(self.lat)
+        etree.SubElement(place, 'long').text = str(self.long)
+        etree.SubElement(place, 'country_id').text = str(self.country_id)
+        etree.SubElement(place, 'parent_id').text = str(self.parent_id)
+        etree.SubElement(place, 'population').text = str(self.population)
+        etree.SubElement(place, 'pp').text = self.pp
+
+        #location = etree.SubElement(place, 'location')
+        #location.append(geopoint_xml(self.lat, self.long))
+
+        return place
     
-        if self.lat is not None:
-            lat_txt = "\n<lat>%s</lat>" % str(self.lat)
-        else:
-            lat_txt = ""
-
-        if self.long is not None:
-            long_txt = "\n<long>%s</long>" % str(self.long)
-        else:
-            long_txt = ""
-
-        if self.parent_id is not None:
-            parent_id_txt = "\n<parent_id>%s</parent_id>" % str(self.parent_id)
-        else:
-            parent_id_txt = ""
-
-        if self.population is not None:
-            population_txt = "\n<population>%s</population>" % str(self.population)
-        else:
-            population_txt = ""
-    
-        return u"""<place>
-<id>%d</id>
-<name>%s</name>%s%s
-<country_id>%s</country_id>%s%s
-<pp>%s</pp>
-</place>""" % (self.id, self.name, lat_txt, long_txt, self.country_id,
-               parent_id_txt, population_txt, self.pp)
-
-
-
 
 class RPost_Code:
 
@@ -117,14 +97,25 @@ class RPost_Code:
         self.pp = pp
         self.dangling = ""
 
-
-
     def to_xml(self):
+        postcode = etree.Element("postcode")
+        etree.SubElement(postcode, 'id').text = str(self.id)
+        etree.SubElement(postcode, 'country_id').text = str(self.country_id)
+        etree.SubElement(postcode, 'lat').text = str(self.lat)
+        etree.SubElement(postcode, 'long').text = str(self.long)
+        etree.SubElement(postcode, 'pp').text = str(self.pp)
+        
+        #location = etree.SubElement(postcode, 'location')
+        #location.append(geopoint_xml(self.lat, self.long))
+        
+        return postcode
+
+
+def geopoint_xml(lat, long, seq=None):
+    point = etree.Element('point')
+    etree.SubElement(point, 'lat').text = str(lat)
+    etree.SubElement(point, 'long').text = str(long)
+    if seq is not None:
+        etree.SubElement(point, 'seq').text = str(seq)
     
-        return u"""<postcode>
-<id>%d</id>
-<country_id>%s</country_id>
-<lat>%s</lat>
-<long>%s</long>
-<pp>%s</pp>
-</postcode>""" % (self.id, str(self.country_id), str(self.lat), str(self.long), self.pp)
+    return point
