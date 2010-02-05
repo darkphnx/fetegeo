@@ -21,10 +21,14 @@
 # IN THE SOFTWARE.
 
 
-import getopt, socket, sys, xml.dom.minidom as minidom
+import getopt, socket, sys
+from xml.dom import minidom
+#from xml import xpath
 
-
-
+try:
+    from lxml import etree
+except:
+    import xml.etree.cElementTree as etree
 
 _VERSION = "0.1"
 
@@ -37,7 +41,7 @@ _Q_CTRY = 1
 
 _TAG_LONG_NAMES = {"dangling" : "Dangling text", "place" : "Place", "id" : "ID", "name" : "Name", \
   "lat" : "Latitude", "long" : "Longitude", "country_id" : "Country ID", "parent_id" : "Parent ID", \
-  "population" : "Population", "pp" : "PP"}
+  "population" : "Population", "pp" : "PP", 'location' : 'Location'}
 
 
 _SHORT_USAGE_MSG = """Usage:
@@ -168,11 +172,10 @@ class Fetegeoc:
     def _elem_pp(self, e, indent_level):
 
         sys.stdout.write("  " * indent_level)
-        if len(e.childNodes) > 0:
-            print "%s: %s" % (_TAG_LONG_NAMES[e.tagName], repr(e.childNodes[0].data)[2:-1])
+        if e.text is not None:
+            print "%s: %s" % (_TAG_LONG_NAMES[e.tag], e.text.strip())
         else:
-            print "%s:" % _TAG_LONG_NAMES[e.tagName]
-
+            print "%s:" % _TAG_LONG_NAMES[e.tag]
 
 
     def _q_geo(self):
@@ -200,40 +203,44 @@ class Fetegeoc:
         </geoquery>""" % (fa_txt, ad_txt, langs, country, self._q_str))
         
         buf = self._pump_sock()
-        d = minidom.parseString(buf)
 
-        i = 0
-        for result in d.firstChild.childNodes:
-            if isinstance(result, minidom.Text):
-                continue
-
-            dangling = result.getElementsByTagName("dangling")[0]
-            place = result.getElementsByTagName("place")
-            if len(place) == 0:
-                place = result.getElementsByTagName("postcode")
-            assert len(place) > 0
-            place = place[0]
-
-            if i > 0:
-                print
-            print "Match #%d" % (i + 1)
-
-            j = 0
-            for e in place.childNodes:
-                if isinstance(e, minidom.Text):
-                    continue
-                j += 1
-                self._elem_pp(e, 1)
+        d = etree.fromstring(buf)
+        
+        # Validate the results against schema
+        s_doc = etree.parse('query_schema.xsd')
+        try:
+            s = etree.XMLSchema(s_doc)
+            s.validate(d)
+        except etree.DocumentInvalid:
+            print 'Results did not match schema'
+            sys.ext(1)
+            
+        results = d.xpath('/results/result')
+        for i, result in enumerate(results):
+            print "Match #%d" % (i+1)
+            
+            dangling = result.xpath('dangling')[0]
+            place = result.xpath('place | postcode')[0]
+            
+            for elem in place:            
+                self._elem_pp(elem, 1)
+                
+                if elem.tag == 'location':
+                    geom = elem.xpath('point | line | area')[0]
+                    
+                    if geom.tag == 'point':
+                        for elem in geom:
+                            self._elem_pp(elem, 2)
+                    if geom.tag == 'line':
+                        pass
+                    if geom.tag == 'area':
+                        pass
 
             self._elem_pp(dangling, 1)
-
-            i += 1
-
-        if i == 0:
-            sys.stderr.write("No match found.\n")
-            sys.exit(1)
-
-
+        
+        if len(results) < 1:
+            print "No match found"
+        
 
     def _q_ctry(self):
 
@@ -242,20 +249,25 @@ class Fetegeoc:
         %s
         <qs>%s</qs>
         </countryquery>""" % (langs, self._q_str))
+        
+        d = etree.fromstring(self._pump_sock())
+        
+        # Validate the results against schema
+        s_doc = etree.parse('query_schema.xsd')
+        try:
+            s = etree.XMLSchema(s_doc)
+            s.validate(d)
+        except etree.DocumentInvalid:
+            print 'Results did not match schema'
+            sys.ext(1)
 
-        d = minidom.parseString(self._pump_sock())
-        if len(d.firstChild.childNodes) == 0:
-            sys.stderr.write("No such country.\n")
-            sys.exit(1)
-        else:
-            i = 0
-            for e in d.firstChild.firstChild.childNodes:
-                if i > 0:
-                    print
-                i += 1
-                self._elem_pp(e, 0)
-
-
+        results = d.xpath('/result/country/name')
+        
+        for country in results:
+            self._elem_pp(country, 0)
+            
+        if len(results) < 1:
+            print "No such country"
 
 
 if __name__ == "__main__":
