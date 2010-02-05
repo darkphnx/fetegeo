@@ -73,15 +73,13 @@ class RPlace:
         place = etree.Element("place")
         etree.SubElement(place, 'id').text = str(self.id)
         etree.SubElement(place, 'name').text = self.name
-        etree.SubElement(place, 'lat').text = str(self.lat)
-        etree.SubElement(place, 'long').text = str(self.long)
         etree.SubElement(place, 'country_id').text = str(self.country_id)
         etree.SubElement(place, 'parent_id').text = str(self.parent_id)
         etree.SubElement(place, 'population').text = str(self.population)
         etree.SubElement(place, 'pp').text = self.pp
 
-        #location = etree.SubElement(place, 'location')
-        #location.append(geopoint_xml(self.lat, self.long))
+        location = etree.SubElement(place, 'location')
+        location.append(geopoint_xml(self.lat, self.long))
 
         return place
     
@@ -101,12 +99,10 @@ class RPost_Code:
         postcode = etree.Element("postcode")
         etree.SubElement(postcode, 'id').text = str(self.id)
         etree.SubElement(postcode, 'country_id').text = str(self.country_id)
-        etree.SubElement(postcode, 'lat').text = str(self.lat)
-        etree.SubElement(postcode, 'long').text = str(self.long)
         etree.SubElement(postcode, 'pp').text = str(self.pp)
         
-        #location = etree.SubElement(postcode, 'location')
-        #location.append(geopoint_xml(self.lat, self.long))
+        location = etree.SubElement(postcode, 'location')
+        location.append(geopoint_xml(self.lat, self.long))
         
         return postcode
 
