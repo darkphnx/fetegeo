@@ -225,7 +225,7 @@ class Fetegeoc:
             for elem in place:            
                 self._elem_pp(elem, 1)
                 
-                if elem.tag == 'location':
+                if elem.tag == 'location' and len(elem) > 0:
                     geom = elem.xpath('point | line | area')[0]
                     
                     if geom.tag == 'point':

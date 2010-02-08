@@ -63,11 +63,15 @@ class RPlace:
 
         self.id = id
         self.name = name
-        self.location = json.loads(location) # could potentially use eval()
         self.country_id = country_id
         self.parent_id = parent_id
         self.population = population
         self.pp = pp
+        
+        if location is not None:
+            self.location = json.loads(location) # could potentially use eval()
+        else:
+            self.location = location
 
     def to_xml(self):
         place = etree.Element("place")
@@ -79,13 +83,14 @@ class RPlace:
         etree.SubElement(place, 'pp').text = self.pp
 
         location_xml = etree.SubElement(place, 'location')
-        if self.location['type'] == 'Point':
-            location_xml.append(geopoint_xml(self.location['coordinates'][0],
-                self.location['coordinates'][1]))
-        elif self.location['type'] == 'LineString':
-            location_xml.append(geoline_xml(self.location['coordinates']))
-        elif self.location['type'] == 'Polygon':
-            location_xml.append(geoarea_xml(self.location['coordinates']))    
+        if self.location is not None:
+            if self.location['type'] == 'Point':
+                location_xml.append(geopoint_xml(self.location['coordinates'][0],
+                    self.location['coordinates'][1]))
+            elif self.location['type'] == 'LineString':
+                location_xml.append(geoline_xml(self.location['coordinates']))
+            elif self.location['type'] == 'Polygon':
+                location_xml.append(geoarea_xml(self.location['coordinates']))    
         
         return place
     
@@ -96,10 +101,14 @@ class RPost_Code:
 
         self.id = id
         self.country_id = country_id
-        self.location = json.loads(location)
         self.pp = pp
         self.dangling = ""
-
+        
+        if location is not None:
+            self.location = json.loads(location)
+        else:
+            self.location = location
+        
     def to_xml(self):
         postcode = etree.Element("postcode")
         etree.SubElement(postcode, 'id').text = str(self.id)
@@ -107,13 +116,14 @@ class RPost_Code:
         etree.SubElement(postcode, 'pp').text = str(self.pp)
         
         location_xml = etree.SubElement(postcode, 'location')
-        if self.location['type'] == 'Point':
-            location_xml.append(geopoint_xml(self.location['coordinates'][0],
-                self.location['coordinates'][1]))
-        elif self.location['type'] == 'LineString':
-            location_xml.append(geoline_xml(self.location['coordinates']))
-        elif self.location['type'] == 'Polygon':
-            location_xml.append(geoarea_xml(self.location['coordinates']))
+        if self.location is not None:
+            if self.location['type'] == 'Point':
+                location_xml.append(geopoint_xml(self.location['coordinates'][0],
+                    self.location['coordinates'][1]))
+            elif self.location['type'] == 'LineString':
+                location_xml.append(geoline_xml(self.location['coordinates']))
+            elif self.location['type'] == 'Polygon':
+                location_xml.append(geoarea_xml(self.location['coordinates']))
         
         return postcode
 
