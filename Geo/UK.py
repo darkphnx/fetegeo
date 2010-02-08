@@ -44,7 +44,8 @@ def postcode_match(ft, i):
         # postcode (e.g. AA9A), so try matching it on its own.
 
         c = ft.db.cursor()
-        c.execute("""SELECT * FROM postcode
+        c.execute("""SELECT id, country_id, main, sup, area_pp, 
+          ST_AsGeoJSON(location) as location FROM postcode
           WHERE country_id=%(uk_id)s AND lower(main)=%(main)s AND sup IS NULL""",
           dict(uk_id=uk_id, main=ft.split[i]))
 
@@ -52,7 +53,9 @@ def postcode_match(ft, i):
             # Since we couldn't find AA9A on its own, see if there are any postcodes with an
             # arbitrary supplementary (e.g. AA9A 2AA). This is likely to return multiple matches
             # if AA9A is a valid postcode.
-            c.execute("SELECT * FROM postcode WHERE country_id=%(uk_id)s AND lower(main)=%(main)s",
+            c.execute("SELECT id, cosuntry_id, main, sup, area_pp, \
+              ST_AsGeoJSON(location) as location \
+              FROM postcode WHERE country_id=%(uk_id)s AND lower(main)=%(main)s",
               dict(uk_id=uk_id, main=ft.split[i]))
 
         if c.rowcount > 0:
@@ -60,8 +63,8 @@ def postcode_match(ft, i):
             cols_map = ft.queryier.mk_cols_map(c)
             fst = c.fetchone()
             match = Results.RPost_Code(fst[cols_map["id"]],
-              fst[cols_map["country_id"]], fst[cols_map["lat"]],
-              fst[cols_map["long"]], mk_pp(ft, fst[cols_map["main"]]))
+              fst[cols_map["country_id"]], fst[cols_map["location"]],
+              mk_pp(ft, fst[cols_map["main"]]))
             yield match, i - 1
 
     if i == 0:
@@ -85,8 +88,8 @@ def postcode_match(ft, i):
     # a match, we don't try searching any further.
 
     c = ft.db.cursor()
-    c.execute("""SELECT id, country_id, main, sup, area_pp, ST_X(location) AS lat,
-      ST_Y(location) AS long FROM postcode
+    c.execute("""SELECT id, country_id, main, sup, area_pp, 
+      ST_AsGeoJSON(location) as location FROM postcode
       WHERE country_id=%(uk_id)s AND lower(main)=%(main)s AND lower(sup)=%(sup)s""",
       dict(uk_id=uk_id, main=ft.split[i - 1], sup=ft.split[i]))
     
@@ -97,7 +100,7 @@ def postcode_match(ft, i):
         fst = c.fetchone()
         pp = mk_pp(ft, "%s %s" % (fst[cols_map["main"]], fst[cols_map["sup"]]))
         match = Results.RPost_Code(fst[cols_map["id"]], fst[cols_map["country_id"]], 
-          fst[cols_map["lat"]], fst[cols_map["long"]], pp)
+          fst[cols_map["location"]], pp)
         yield match, i - 2
         return
 
@@ -105,8 +108,8 @@ def postcode_match(ft, i):
     # part. e.g. for AA9A 9AA try matching AA9A 9.
 
     c = ft.db.cursor()
-    c.execute("""SELECT id, country_id, main, sup, area_pp, ST_X(location) AS lat, 
-      ST_Y(location) AS long FROM postcode
+    c.execute("""SELECT id, country_id, main, sup, area_pp, 
+      ST_AsGeoJSON(location) as location FROM postcode
       WHERE country_id=%(uk_id)s AND lower(main)=%(main)s AND lower(sup)=%(sup0)s""",
       dict(uk_id=uk_id, main=ft.split[i - 1], sup0=ft.split[i][0]))
     
@@ -117,7 +120,7 @@ def postcode_match(ft, i):
         fst = c.fetchone()
         pp = mk_pp(ft, "%s %s" % (fst[cols_map["main"]], fst[cols_map["sup"]][0]))
         match = Results.RPost_Code(fst[cols_map["id"]], fst[cols_map["country_id"]],
-          fst[cols_map["lat"]], fst[cols_map["long"]], pp)
+          fst[cols_map["location"]], pp)
         yield match, i - 2
         return
 
@@ -125,15 +128,16 @@ def postcode_match(ft, i):
     # part. This will probably return multiple matches.
 
     c = ft.db.cursor()
-    c.execute("SELECT id, country_id, main, sup, area_pp, ST_X(location) AS lat, \
-      ST_Y(location) AS long FROM postcode WHERE country_id=%(uk_id)s AND lower(main)=%(main)s",
+    c.execute("SELECT id, country_id, main, sup, area_pp, \
+      ST_AsGeoJSON(location) as location FROM postcode \
+      WHERE country_id=%(uk_id)s AND lower(main)=%(main)s",
       dict(uk_id=uk_id, main=ft.split[i - 1]))
     
     if c.rowcount != 0:
         cols_map = ft.queryier.mk_cols_map(c)
         fst = c.fetchone() # Arbitrarily pick the first result.
         match = Results.RPost_Code(fst[cols_map["id"]], fst[cols_map["country_id"]],
-          fst[cols_map["lat"]], fst[cols_map["long"]], mk_pp(ft, fst[cols_map["main"]]))
+          fst[cols_map["location"]], mk_pp(ft, fst[cols_map["main"]]))
         yield match, i - 2
 
 

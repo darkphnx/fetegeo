@@ -47,8 +47,9 @@ def _sub_pc_match(ft, i):
 
     c = ft.db.cursor()
 
-    c.execute("SELECT id, country_id, main, sup, area_pp, ST_X(location) AS lat, \
-      ST_Y(location) AS long FROM postcode WHERE lower(main)=%(main)s AND country_id=%(us_id)s",
+    c.execute("SELECT id, country_id, main, sup, area_pp, \
+      ST_AsGeoJSON(location) as location FROM postcode \
+      WHERE lower(main)=%(main)s AND country_id=%(us_id)s",
       dict(main=ft.split[i], us_id=us_id))
 
     cols_map = ft.queryier.mk_cols_map(c)
@@ -62,7 +63,7 @@ def _sub_pc_match(ft, i):
             pp = "%s, %s" % (pp, ft.queryier.country_name_id(ft, cnd[cols_map["country_id"]]))
 
         match = Results.RPost_Code(cnd[cols_map["id"]], cnd[cols_map["country_id"]],
-          cnd[cols_map["lat"]], cnd[cols_map["long"]], pp)
+          cnd[cols_map["location"]], pp)
         yield match, i - 1
 
 
