@@ -98,10 +98,10 @@ if hasattr(db, "set_client_encoding"):
 
 print "===> Creating tables"
 
-#f = file("tables", "rt")
+f = file("tables", "rt")
 c = db.cursor()
-#c.execute(f.read())
-#f.close()
+c.execute(f.read())
+f.close()
 
 
 
