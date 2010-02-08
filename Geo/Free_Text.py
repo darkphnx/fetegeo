@@ -263,7 +263,7 @@ class Free_Text:
                 places = self.queryier.place_cache[cache_key]
             else:
                 c.execute("""SELECT DISTINCT ON (place.id, name)
-                  place.id, name, ST_X(location) AS lat, ST_Y(location) AS long, 
+                  place.id, name, ST_AsGeoJSON(location) as location,
                   country_id, parent_id, population
                   FROM place, place_name
                   WHERE name_hash=%(name_hash)s AND place.id=place_name.place_id""" + country_sstr,
@@ -271,7 +271,7 @@ class Free_Text:
                 places = c.fetchall()
                 self.queryier.place_cache[cache_key] = places
 
-            for place_id, name, lat, long, sub_country_id, parent_id, population in places:
+            for place_id, name, location, sub_country_id, parent_id, population in places:
                 # Don't get caught out by e.g. a capital city having the same name as a state.            
                 if place_id in parent_places:
                     continue
@@ -323,9 +323,9 @@ class Free_Text:
                     local_name = self.queryier.name_place_id(self, place_id)
 
                     pp = self.queryier.pp_place_id(self, place_id)
-
+                    
                     self._longest_match = new_i + 1
-                    self._matches[new_i + 1].append(Results.RPlace(place_id, local_name, lat, long, \
+                    self._matches[new_i + 1].append(Results.RPlace(place_id, local_name, location, \
                       sub_country_id, parent_id, population, pp))
 
             if postcode is None:
@@ -402,8 +402,8 @@ class Free_Text:
         else:
             country_sstr = ""
         
-        c.execute("SELECT id, country_id, main, sup, area_pp, ST_X(location) AS lat, \
-          ST_Y(location) AS long FROM postcode \
+        c.execute("SELECT id, country_id, main, sup, area_pp, \
+          ST_AsGeoJSON(location) as location FROM postcode \
           WHERE lower(main)=%(main)s AND sup IS NULL" + country_sstr, \
           dict(main=self.split[i], country_id=country_id))
         
@@ -423,7 +423,7 @@ class Free_Text:
                   cnd[cols_map["country_id"]]))
 
             match = Results.RPost_Code(cnd[cols_map["id"]], cnd[cols_map["country_id"]],
-              cnd[cols_map["lat"]], cnd[cols_map["long"]], pp)
+              cnd[cols_map["location"]], pp)
             yield match, i - 1
 
         if country_id is not None and country_id != uk_id:
