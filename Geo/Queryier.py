@@ -73,11 +73,9 @@ class Queryier:
     def mk_cols_map(self, c):
 
         map = {}
-        i = 0 
-        for col in c.description:
+        for i, col in enumerate(c.description):
             assert not map.has_key(col[0])
             map[col[0]] = i
-            i += 1
 
         return map
 
