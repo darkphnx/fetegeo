@@ -53,7 +53,7 @@ def postcode_match(ft, i):
             # Since we couldn't find AA9A on its own, see if there are any postcodes with an
             # arbitrary supplementary (e.g. AA9A 2AA). This is likely to return multiple matches
             # if AA9A is a valid postcode.
-            c.execute("SELECT id, cosuntry_id, main, sup, area_pp, \
+            c.execute("SELECT id, country_id, main, sup, area_pp, \
               ST_AsGeoJSON(location) as location \
               FROM postcode WHERE country_id=%(uk_id)s AND lower(main)=%(main)s",
               dict(uk_id=uk_id, main=ft.split[i]))
