@@ -41,7 +41,7 @@ _Q_CTRY = 1
 
 _TAG_LONG_NAMES = {"dangling" : "Dangling text", "place" : "Place", "id" : "ID", "name" : "Name", \
   "lat" : "Latitude", "long" : "Longitude", "country_id" : "Country ID", "parent_id" : "Parent ID", \
-  "population" : "Population", "pp" : "PP", 'location' : 'Location'}
+  "population" : "Population", "pp" : "PP", 'location' : 'Location', 'seq' : 'Point'}
 
 
 _SHORT_USAGE_MSG = """Usage:
@@ -232,9 +232,15 @@ class Fetegeoc:
                         for elem in geom:
                             self._elem_pp(elem, 2)
                     if geom.tag == 'line':
-                        pass
+                        for point in geom.xpath('point'):
+                            self._elem_pp(point.xpath('seq')[0], 2)
+                            for elem in point.xpath('lat | long'):
+                                self._elem_pp(elem, 3)
                     if geom.tag == 'area':
-                        pass
+                        for point in geom.xpath('point'):
+                            self._elem_pp(point.xpath('seq')[0], 2)
+                            for elem in point.xpath('lat | long'):
+                                self._elem_pp(elem, 3)
 
             self._elem_pp(dangling, 1)
         
