@@ -19,6 +19,7 @@
 # IN THE SOFTWARE.
 
 # Use lxml if it is available since it is faster
+import json
 try:
     from lxml import etree
 except ImportError:
@@ -58,12 +59,11 @@ class RCountry:
 
 class RPlace:
 
-    def __init__(self, id, name, lat, long, country_id, parent_id, population, pp):
+    def __init__(self, id, name, location, country_id, parent_id, population, pp):
 
         self.id = id
         self.name = name
-        self.lat = lat
-        self.long = long
+        self.location = json.loads(location) # could potentially use eval()
         self.country_id = country_id
         self.parent_id = parent_id
         self.population = population
@@ -78,20 +78,25 @@ class RPlace:
         etree.SubElement(place, 'population').text = str(self.population)
         etree.SubElement(place, 'pp').text = self.pp
 
-        location = etree.SubElement(place, 'location')
-        location.append(geopoint_xml(self.lat, self.long))
-
+        location_xml = etree.SubElement(place, 'location')
+        if self.location['type'] == 'Point':
+            location_xml.append(geopoint_xml(self.location['coordinates'][0],
+                self.location['coordinates'][1]))
+        elif self.location['type'] == 'LineString':
+            location_xml.append(geoline_xml(self.location['coordinates']))
+        elif self.location['type'] == 'Polygon':
+            location_xml.append(geoarea_xml(self.location['coordinates']))    
+        
         return place
     
 
 class RPost_Code:
 
-    def __init__(self, id, country_id, lat, long, pp):
+    def __init__(self, id, country_id, location, pp):
 
         self.id = id
         self.country_id = country_id
-        self.lat = lat
-        self.long = long
+        self.location = json.loads(location)
         self.pp = pp
         self.dangling = ""
 
@@ -101,12 +106,18 @@ class RPost_Code:
         etree.SubElement(postcode, 'country_id').text = str(self.country_id)
         etree.SubElement(postcode, 'pp').text = str(self.pp)
         
-        location = etree.SubElement(postcode, 'location')
-        location.append(geopoint_xml(self.lat, self.long))
+        location_xml = etree.SubElement(postcode, 'location')
+        if self.location['type'] == 'Point':
+            location_xml.append(geopoint_xml(self.location['coordinates'][0],
+                self.location['coordinates'][1]))
+        elif self.location['type'] == 'LineString':
+            location_xml.append(geoline_xml(self.location['coordinates']))
+        elif self.location['type'] == 'Polygon':
+            location_xml.append(geoarea_xml(self.location['coordinates']))
         
         return postcode
 
-
+# Location type helper functions
 def geopoint_xml(lat, long, seq=None):
     point = etree.Element('point')
     etree.SubElement(point, 'lat').text = str(lat)
@@ -115,3 +126,17 @@ def geopoint_xml(lat, long, seq=None):
         etree.SubElement(point, 'seq').text = str(seq)
     
     return point
+    
+def geoline_xml(coords=[]):
+    line = etree.Element('line')
+    for i, coord in enumerate(coords):
+        line.append(geopoint_xml(coord[0], coord[1], i+1))
+        
+    return line
+        
+def geoarea_xml(coords=[]):
+    area = etree.Element('area')
+    for i, coord in enumerate(coords):
+        area.append(geopoint_xml(coord[0], coord[1], i+1))
+        
+    return area
