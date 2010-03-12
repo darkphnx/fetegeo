@@ -82,15 +82,7 @@ class RPlace:
         etree.SubElement(place, 'population').text = str(self.population)
         etree.SubElement(place, 'pp').text = self.pp
 
-        location_xml = etree.SubElement(place, 'location')
-        if self.location is not None:
-            if self.location['type'] == 'Point':
-                location_xml.append(geopoint_xml(self.location['coordinates'][0],
-                    self.location['coordinates'][1]))
-            elif self.location['type'] == 'LineString':
-                location_xml.append(geoline_xml(self.location['coordinates']))
-            elif self.location['type'] == 'Polygon':
-                location_xml.append(geoarea_xml(self.location['coordinates']))    
+        build_location_xml(self.location, etree.SubElement(place, 'location'))
         
         return place
     
@@ -115,19 +107,29 @@ class RPost_Code:
         etree.SubElement(postcode, 'country_id').text = str(self.country_id)
         etree.SubElement(postcode, 'pp').text = str(self.pp)
         
-        location_xml = etree.SubElement(postcode, 'location')
-        if self.location is not None:
-            if self.location['type'] == 'Point':
-                location_xml.append(geopoint_xml(self.location['coordinates'][0],
-                    self.location['coordinates'][1]))
-            elif self.location['type'] == 'LineString':
-                location_xml.append(geoline_xml(self.location['coordinates']))
-            elif self.location['type'] == 'Polygon':
-                location_xml.append(geoarea_xml(self.location['coordinates']))
+        build_location_xml(self.location, etree.SubElement(postcode, 'location'))
         
         return postcode
 
+
 # Location type helper functions
+def build_location_xml(location, location_xml):
+     if location is not None:
+        if location['type'] == 'Point':
+            location_xml.append(geopoint_xml(location['coordinates'][0],
+                location['coordinates'][1]))
+        elif location['type'] == 'LineString':
+            location_xml.append(geoline_xml(location['coordinates']))
+        elif location['type'] == 'Polygon':
+            location_xml.append(geoarea_xml(location['coordinates'][0]))
+        elif location['type'] == 'MultiLineString':
+            for line in geomultiline_xml(location['coordinates']):
+                location_xml.append(line)
+        elif location['type'] == 'MultiPolygon':
+            for area in geomultiarea_xml(location['coordinates']):
+                location_xml.append(area)
+        
+
 def geopoint_xml(lat, long, seq=None):
     point = etree.Element('point')
     etree.SubElement(point, 'lat').text = str(lat)
@@ -137,16 +139,38 @@ def geopoint_xml(lat, long, seq=None):
     
     return point
     
-def geoline_xml(coords=[]):
+    
+def geoline_xml(coords=[], seq_offset=0):
     line = etree.Element('line')
     for i, coord in enumerate(coords):
-        line.append(geopoint_xml(coord[0], coord[1], i+1))
+        line.append(geopoint_xml(coord[0], coord[1], seq_offset+(i+1)))
         
     return line
-        
-def geoarea_xml(coords=[]):
+
+
+def geoarea_xml(coords=[], seq_offset=0):
     area = etree.Element('area')
     for i, coord in enumerate(coords):
-        area.append(geopoint_xml(coord[0], coord[1], i+1))
-        
+        area.append(geopoint_xml(coord[0], coord[1], seq_offset+(i+1)))
+
     return area
+
+
+def geomultiline_xml(coords=[]):
+    lines = []
+    offset = 0
+    
+    for line in coords:
+        lines.append(geoline_xml(line, offset))
+        offset += len(lines[-1].getchildren())
+        
+    return lines
+
+
+def geomultiarea_xml(coords=[]):
+    areas = []
+    
+    for area in coords:
+        areas.append(geoarea_xml(area))
+    
+    return areas
