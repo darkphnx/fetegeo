@@ -19,9 +19,9 @@
 # IN THE SOFTWARE.
 
 
+from ctypes import c_int32 # Required for the java hashcode implementation
 import re
 import Results, UK, US
-
 
 
 
@@ -471,16 +471,24 @@ def _split(s):
     return sp, sp_indices
 
 
+# Function to replicate the output of java.lang.String.hashCode() 
+# as used by the osmosis importer
+def _java_hashcode(s):
+    h = 0
+    for char in s:
+        h = 31*h + ord(char)
+    
+    return c_int32(h).value
+
 
 def _hash_wd(s):
 
-    return hash(s)
-
+    return _java_hashcode(s)
 
 
 def _hash_list(s):
 
-    return hash("_".join(s))
+    return _java_hashcode("_".join(s))
 
 
 
