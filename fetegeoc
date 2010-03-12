@@ -90,7 +90,7 @@ class Fetegeoc:
     def _parse_args(self):
 
         try:
-            opts, args = getopt.getopt(sys.argv[1:], 'ac:dhl:s:p:')
+            opts, args = getopt.getopt(sys.argv[1:], 'ac:dhl:s:xp:')
         except getopt.error, e:
             self._usage(str(e), code=1)
 
@@ -99,6 +99,7 @@ class Fetegeoc:
         self._allow_dangling = False
         self._host = _DEFAULT_HOST
         self._port = _DEFAULT_PORT
+        self._raw_xml = False
         self._langs = []
         for opt, arg in opts:
             if opt == "-a":
@@ -118,6 +119,8 @@ class Fetegeoc:
                 self._langs.append(arg)
             elif opt == "-s":
                 self._host = arg
+            elif opt == "-x":
+                self._raw_xml = True
             elif opt == "-p":
                 try:
                     self._port = int(arg)
@@ -214,38 +217,41 @@ class Fetegeoc:
         except etree.DocumentInvalid:
             print 'Results did not match schema'
             sys.ext(1)
-            
-        results = d.xpath('/results/result')
-        for i, result in enumerate(results):
-            print "Match #%d" % (i+1)
-            
-            dangling = result.xpath('dangling')[0]
-            place = result.xpath('place | postcode')[0]
-            
-            for elem in place:            
-                self._elem_pp(elem, 1)
-                
-                if elem.tag == 'location' and len(elem) > 0:
-                    geom = elem.xpath('point | line | area')[0]
-                    
-                    if geom.tag == 'point':
-                        for elem in geom:
-                            self._elem_pp(elem, 2)
-                    if geom.tag == 'line':
-                        for point in geom.xpath('point'):
-                            self._elem_pp(point.xpath('seq')[0], 2)
-                            for elem in point.xpath('lat | long'):
-                                self._elem_pp(elem, 3)
-                    if geom.tag == 'area':
-                        for point in geom.xpath('point'):
-                            self._elem_pp(point.xpath('seq')[0], 2)
-                            for elem in point.xpath('lat | long'):
-                                self._elem_pp(elem, 3)
-
-            self._elem_pp(dangling, 1)
         
-        if len(results) < 1:
-            print "No match found"
+        if self._raw_xml:
+            print etree.tostring(d, pretty_print=True)
+        else:
+            results = d.xpath('/results/result')
+            for i, result in enumerate(results):
+                print "Match #%d" % (i+1)
+            
+                dangling = result.xpath('dangling')[0]
+                place = result.xpath('place | postcode')[0]
+            
+                for elem in place:            
+                    self._elem_pp(elem, 1)
+                
+                    if elem.tag == 'location' and len(elem) > 0:
+                        geom = elem.xpath('point | line | area')[0]
+                    
+                        if geom.tag == 'point':
+                            for elem in geom:
+                                self._elem_pp(elem, 2)
+                        if geom.tag == 'line':
+                            for point in geom.xpath('point'):
+                                self._elem_pp(point.xpath('seq')[0], 2)
+                                for elem in point.xpath('lat | long'):
+                                    self._elem_pp(elem, 3)
+                        if geom.tag == 'area':
+                            for point in geom.xpath('point'):
+                                self._elem_pp(point.xpath('seq')[0], 2)
+                                for elem in point.xpath('lat | long'):
+                                    self._elem_pp(elem, 3)
+
+                self._elem_pp(dangling, 1)
+        
+            if len(results) < 1:
+                print "No match found"
         
 
     def _q_ctry(self):
