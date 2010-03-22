@@ -97,6 +97,7 @@ class Queryier:
     
         if not self.country_iso2_id_cache.has_key(country_id):
             c = ft.db.cursor()
+
             c.execute("SELECT iso2 FROM country WHERE id=%(id)s", dict(id=country_id))
             assert c.rowcount == 1
             self.country_iso2_id_cache[country_id] = c.fetchone()[0]
@@ -179,10 +180,13 @@ class Queryier:
         
         pp = self.name_place_id(ft, place_id)
         
-        c.execute("SELECT parent_id, country_id, type from place WHERE id=%(id)s", dict(id=place_id))
+        c.execute("""SELECT id, type FROM place WHERE type=2 AND ST_Contains(location, (SELECT location FROM place WHERE id=%(id)s))""", {'id':place_id})
+        parents = c.fetchall()
+        
+        c.execute("""SELECT id FROM country WHERE ST_Contains(location, (SELECT location FROM place WHERE id=%(id)s))""", {'id':place_id})
         assert c.rowcount == 1
         
-        parent_id, country_id, type = c.fetchone()
+        country_id = c.fetchone()
         
         iso2 = self.get_country_iso2_from_id(ft, country_id)
         if iso2 in _COUNTRY_FORMATS:
@@ -190,12 +194,9 @@ class Queryier:
         else:
             format = _DEFAULT_FORMAT
         
-        while parent_id is not None:
-            c.execute("""SELECT parent_id, type from place WHERE id=%(id)s""", dict(id=parent_id))
-            new_parent_id, type = c.fetchone()
+        for parent_id, type in parents:
             if format[0] and type == TYPE_COUNTY or format[1] and type == TYPE_STATE:
                 pp = "%s, %s" % (pp, self.name_place_id(ft, parent_id))
-            parent_id = new_parent_id
 
         if country_id != ft.host_country_id:
             pp = "%s, %s" % (pp, self.country_name_id(ft, country_id))
