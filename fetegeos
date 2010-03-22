@@ -189,7 +189,7 @@ class Fetegeos_Handler(SocketServer.BaseRequestHandler):
         qs = self._get_qe("qs")
 
         c = self._db.cursor()
-        c.execute("SELECT id FROM country WHERE iso2=%(qs)s OR iso3=%(qs)s", dict(qs=qs.upper()))
+        c.execute("SELECT id FROM country WHERE iso2=%(qs)s", dict(qs=qs.upper()))
         assert c.rowcount < 2
         if c.rowcount == 1:
             cntry_id = c.fetchone()[0]
