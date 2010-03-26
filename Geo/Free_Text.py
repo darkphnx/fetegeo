@@ -61,6 +61,7 @@ class Free_Text:
         self._longest_match = len(self.split)
         self._matches = [[] for x in range(len(self.split))]
 
+
         # _matched_places is a set storing (place_id, i) pairs recording that a place was found at
         # position 'i' in the split. This weeds out duplicates *unless* we're doing loose matching
         # when we might conceivably match the same place twice but with different bits of "loose"
@@ -222,6 +223,7 @@ class Free_Text:
 
         # Finally try and match a full country name. Note that we're agnostic over the language used to
         # specify the country name.
+        # FIXME: THIS ONLY WORKS WITH COUNTRIES WITH ONLY 1 WORD IN THE NAME
 
         c.execute("SELECT country_id, name FROM country_name WHERE name_lwdh=%(name_lwdh)s",
           dict(name_lwdh=_hash_wd(self.split[-1])))
@@ -251,27 +253,32 @@ class Free_Text:
         c = self.db.cursor()
 
         if country_id is not None:
-            country_sstr = " AND country_id = %(country_id)s"
+            country_sstr = """location @ (SELECT location FROM country WHERE id=%s) AND """ % country_id
         else:
             country_sstr = ""
 
         for j in range(0, i + 1):
             sub_hash = _hash_list(self.split[j:i + 1])
+            # print j, i, self.split[j:i + 1]
             
             cache_key = (country_id, sub_hash)
             if self.queryier.place_cache.has_key(cache_key):
                 places = self.queryier.place_cache[cache_key]
-            else:
+            else: 
                 c.execute("""SELECT DISTINCT ON (place.id, name)
-                  place.id, name, ST_AsGeoJSON(location) as location,
-                  country_id, parent_id, population
+                  place.id, name, ST_AsGeoJSON(location) as location, population,
+                  location as raw_location
                   FROM place, place_name
-                  WHERE name_hash=%(name_hash)s AND place.id=place_name.place_id""" + country_sstr,
-                  dict(name_hash=sub_hash, country_id=country_id))
+                  WHERE """+country_sstr+"""name_hash=%(name_hash)s AND place.id=place_name.place_id""",
+                  {'name_hash': sub_hash})
                 places = c.fetchall()
+                
                 self.queryier.place_cache[cache_key] = places
 
-            for place_id, name, location, sub_country_id, parent_id, population in places:
+            for place_id, name, location, population, raw_location in places:
+                
+                parent_id = None
+                
                 # Don't get caught out by e.g. a capital city having the same name as a state.            
                 if place_id in parent_places:
                     continue
@@ -283,13 +290,13 @@ class Free_Text:
                     # tentatively matched contradict each other. Ideally we'd like to match
                     # parent IDs and so on; at the moment we can only check that the postcode
                     # and place come from the same country.
-                    if postcode.country_id != sub_country_id:
+                    if postcode.country_id != country_id:
                         continue
 
                 # Ensure that if there are parent places, then this candidate is a valid child.
                 if len(parent_places) > 0 and not self._find_parent(parent_places[0], place_id):
                     continue
-
+                    
                 new_i = _match_end_split(self.split, i, name)
                 assert new_i < i
 
@@ -300,7 +307,8 @@ class Free_Text:
                     yield new_parent_places, postcode, new_i
                 elif new_i is not None:
                     record_match = True
-                    for sub_places, sub_postcode, k in self._iter_places(new_i, sub_country_id, \
+
+                    for sub_places, sub_postcode, k in self._iter_places(new_i, country_id, \
                       new_parent_places, postcode):
                         assert k < new_i
                         record_match = False
@@ -308,7 +316,9 @@ class Free_Text:
 
                     yield new_parent_places, postcode, new_i
 
+
                 if record_match and postcode is None:
+                    
                     if new_i + 1 > self._longest_match:
                         # Although we've got a potential match, it's got more dangling text than some
                         # previous matches, so there's no point trying to go any further with it.
@@ -318,15 +328,25 @@ class Free_Text:
                     done_key = (place_id, new_i)
                     if done_key in self._matched_places:
                         continue
+                    
+                    parents = parent_places
+                        
                     self._matched_places.add(done_key)
 
                     local_name = self.queryier.name_place_id(self, place_id)
 
-                    pp = self.queryier.pp_place_id(self, place_id)
+                    print parents, country_id, name
+                    if country_id is None:
+                        country_id = self._find_country(place_id)
+                        
+                    if len(parents) == 0:
+                        parents = self._find_parents(place_id, country_id)
+                        
+                    pp = self.queryier.pp_place_id(self, place_id, country_id, parents)
                     
                     self._longest_match = new_i + 1
                     self._matches[new_i + 1].append(Results.RPlace(place_id, local_name, location, \
-                      sub_country_id, parent_id, population, pp))
+                      country_id, parent_id, population, pp))
 
             if postcode is None:
                 for sub_postcode, k in self._iter_postcode(i, country_id):
@@ -361,26 +381,38 @@ class Free_Text:
 
         cache_key = (find_id, place_id)
         if self.queryier.parent_cache.has_key(cache_key):
-            pass
             return self.queryier.parent_cache[cache_key]
 
         c = self.db.cursor()
         
-        c.execute("""SELECT parent_id FROM place WHERE id=%(place_id)s""", dict(place_id=place_id))
+        c.execute("""SELECT (SELECT location FROM place WHERE id=%(place_id)s) @ 
+            (SELECT location FROM place WHERE id=%(find_id)s)""", {'find_id' : find_id, 'place_id': place_id})
+        
+        is_parent = c.fetchone()[0]
+        self.queryier.parent_cache[cache_key] = is_parent
+        return is_parent
+    
+    def _find_country(self, place_id):
+        c = self.db.cursor()
+        c.execute("""SELECT id FROM country WHERE (SELECT location FROM place WHERE id=%(place_id)s) && location
+            AND ST_Contains(location, (SELECT location FROM place WHERE id=%(place_id)s))""", \
+            {'place_id': place_id})
         assert c.rowcount == 1
-        parent_id = c.fetchone()[0]
-        if parent_id is None:
-            self.queryier.parent_cache[cache_key] = False
-            return False
-        elif parent_id == find_id:
-            self.queryier.parent_cache[cache_key] = True
-            return True
-        else:
-            r = self._find_parent(find_id, parent_id)
-            self.queryier.parent_cache[cache_key] = r
-            return r
+        
+        return c.fetchall()[0]
+        
+    def _find_parents(self, place_id, country_id):
+        c = self.db.cursor()
+        
+        # TODO: Get these to return in some sort of logical order
+        
+        c.execute("""SELECT id FROM place WHERE type=%(boundary_type)s
+            AND location @ (SELECT location FROM country WHERE id=%(country_id)s)
+            AND (SELECT location FROM place WHERE id=%(place_id)s) @ location
+            AND ST_Contains(location, (SELECT location FROM place WHERE id=%(place_id)s))""",
+            {'place_id': place_id, 'country_id': country_id, 'boundary_type': 2})
 
-
+        return c.fetchall()
 
     def _iter_postcode(self, i, country_id):
 
@@ -501,7 +533,7 @@ def _hash_list(s):
 #
 
 def _match_end_split(split, i, name):
-
+    
     split_name, split_indices = _split(name)
     if split_name == split[i - len(split_name) + 1 : i + 1]:
         return i - len(split_name)
