@@ -170,7 +170,7 @@ class Queryier:
 
 
 
-    def pp_place_id(self, ft, place_id):
+    def pp_place_id(self, ft, place_id, country_id, parents = None):
 
         cache_key = (tuple(ft.lang_ids), ft.host_country_id, place_id)
         if self.place_pp_cache.has_key(cache_key):
@@ -180,23 +180,15 @@ class Queryier:
         
         pp = self.name_place_id(ft, place_id)
         
-        c.execute("""SELECT id, type FROM place WHERE type=2 AND ST_Contains(location, (SELECT location FROM place WHERE id=%(id)s))""", {'id':place_id})
-        parents = c.fetchall()
-        
-        c.execute("""SELECT id FROM country WHERE ST_Contains(location, (SELECT location FROM place WHERE id=%(id)s))""", {'id':place_id})
-        assert c.rowcount == 1
-        
-        country_id = c.fetchone()
-        
         iso2 = self.get_country_iso2_from_id(ft, country_id)
         if iso2 in _COUNTRY_FORMATS:
             format = _COUNTRY_FORMATS[iso2]
         else:
             format = _DEFAULT_FORMAT
         
-        for parent_id, type in parents:
-            if format[0] and type == TYPE_COUNTY or format[1] and type == TYPE_STATE:
-                pp = "%s, %s" % (pp, self.name_place_id(ft, parent_id))
+        for parent_id in parents:
+            #if format[0] and type == TYPE_COUNTY or format[1] and type == TYPE_STATE:
+            pp = "%s, %s" % (pp, self.name_place_id(ft, parent_id))
 
         if country_id != ft.host_country_id:
             pp = "%s, %s" % (pp, self.country_name_id(ft, country_id))
