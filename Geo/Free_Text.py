@@ -37,7 +37,7 @@ _RE_SPLIT = re.compile("[ ,-/]")
 #
 
 class Free_Text:
-
+    
     def name_to_lat_long(self, queryier, db, lang_ids, find_all, allow_dangling, qs, host_country_id):
 
         self.queryier = queryier
@@ -76,7 +76,7 @@ class Free_Text:
         # This is done by splitting the string up into its constituent words and using the current
         # right-hand most word as a candidate match. This copes with the fact that many countries /
         # administrative units have spaces in them.
-
+        
         for country_id, i in self._iter_country():
             if i == -1:
                 # geonames doesn't have lat / long data for countries directly, but includes them as
@@ -294,7 +294,7 @@ class Free_Text:
                         continue
 
                 # Ensure that if there are parent places, then this candidate is a valid child.
-                if len(parent_places) > 0 and not self._find_parent(parent_places[0], place_id):
+                if len(parent_places) > 0 and not self._is_parent(parent_places[0], place_id):
                     continue
                     
                 new_i = _match_end_split(self.split, i, name)
@@ -328,25 +328,21 @@ class Free_Text:
                     done_key = (place_id, new_i)
                     if done_key in self._matched_places:
                         continue
-                    
-                    parents = parent_places
                         
                     self._matched_places.add(done_key)
 
                     local_name = self.queryier.name_place_id(self, place_id)
 
-                    print parents, country_id, name
                     if country_id is None:
                         country_id = self._find_country(place_id)
                         
-                    if len(parents) == 0:
-                        parents = self._find_parents(place_id, country_id)
+                    parents = self._find_parents(place_id, country_id)
                         
                     pp = self.queryier.pp_place_id(self, place_id, country_id, parents)
                     
                     self._longest_match = new_i + 1
                     self._matches[new_i + 1].append(Results.RPlace(place_id, local_name, location, \
-                      country_id, parent_id, population, pp))
+                      country_id, parents, population, pp))
 
             if postcode is None:
                 for sub_postcode, k in self._iter_postcode(i, country_id):
@@ -377,7 +373,7 @@ class Free_Text:
     # Return True if 'find_id' is a parent of 'place_id'.
     #
 
-    def _find_parent(self, find_id, place_id):
+    def _is_parent(self, find_id, place_id):
 
         cache_key = (find_id, place_id)
         if self.queryier.parent_cache.has_key(cache_key):
@@ -399,20 +395,21 @@ class Free_Text:
             {'place_id': place_id})
         assert c.rowcount == 1
         
-        return c.fetchall()[0]
+        return c.fetchone()[0]
         
     def _find_parents(self, place_id, country_id):
         c = self.db.cursor()
         
-        # TODO: Get these to return in some sort of logical order
+        # We guess at which is the largest parent by measuring the perimeter (for some reason area does not always work well)
         
         c.execute("""SELECT id FROM place WHERE type=%(boundary_type)s
             AND location @ (SELECT location FROM country WHERE id=%(country_id)s)
             AND (SELECT location FROM place WHERE id=%(place_id)s) @ location
-            AND ST_Contains(location, (SELECT location FROM place WHERE id=%(place_id)s))""",
+            AND ST_Contains(location, (SELECT location FROM place WHERE id=%(place_id)s))
+            ORDER BY ST_Perimeter(location) ASC""",
             {'place_id': place_id, 'country_id': country_id, 'boundary_type': 2})
 
-        return c.fetchall()
+        return [ x[0] for x in c.fetchall() ]
 
     def _iter_postcode(self, i, country_id):
 
